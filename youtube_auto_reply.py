@@ -14,14 +14,14 @@ def authenticate():
     )
     return build("youtube", "v3", credentials=credentials)
 
-def get_comments(youtube, video_id):
-    """指定された動画のすべてのコメントを取得"""
+def get_comments_and_replies(youtube, video_id):
+    """指定された動画のすべてのコメントと返信コメントを取得"""
     comments = []
     next_page_token = None
 
     while True:
         request = youtube.commentThreads().list(
-            part="snippet",
+            part="snippet,replies",
             videoId=video_id,
             maxResults=100,  # 1回のリクエストで最大100件
             pageToken=next_page_token  # 次のページのトークンを指定
@@ -29,12 +29,23 @@ def get_comments(youtube, video_id):
         response = request.execute()
 
         for item in response.get("items", []):
-            comment = item["snippet"]["topLevelComment"]["snippet"]
+            # トップレベルコメントを追加
+            top_comment = item["snippet"]["topLevelComment"]["snippet"]
             comments.append({
                 "comment_id": item["id"],  # コメントのID
-                "text": comment["textDisplay"],  # コメント本文
-                "author": comment["authorDisplayName"]  # コメント投稿者名
+                "text": top_comment["textDisplay"],  # コメント本文
+                "author": top_comment["authorDisplayName"],  # コメント投稿者名
             })
+
+            # 返信コメントが存在する場合
+            if "replies" in item:
+                for reply in item["replies"]["comments"]:
+                    reply_snippet = reply["snippet"]
+                    comments.append({
+                        "comment_id": reply["id"],  # 返信コメントのID
+                        "text": reply_snippet["textDisplay"],  # 返信コメント本文
+                        "author": reply_snippet["authorDisplayName"],  # 返信コメント投稿者名
+                    })
 
         # 次のページトークンがある場合、次のリクエストを実行
         next_page_token = response.get("nextPageToken")
@@ -66,9 +77,9 @@ def main():
     username = "@MEPI486"  # 検出する文字列
     reply_text = "効いてて草"  # 返信内容
 
-    # コメントを取得
-    comments = get_comments(youtube, video_id)
-    print(f"コメントを {len(comments)} 件取得しました。")
+    # コメントと返信を取得
+    comments = get_comments_and_replies(youtube, video_id)
+    print(f"コメントと返信を合わせて {len(comments)} 件取得しました。")
 
     replied = False  # 返信が行われたかどうかを追跡
 
@@ -82,7 +93,7 @@ def main():
 
     # 返信が行われなかった場合のメッセージ
     if not replied:
-        print("条件に一致するコメントはありませんでした。")
+        print("条件に一致するコメントや返信コメントはありませんでした。")
 
 if __name__ == "__main__":
     main()
