@@ -1,9 +1,9 @@
-name: YouTube Auto Reply with OAuth
+name: YouTube Auto Reply with Service Account
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # 15分ごとに実行 (UTC時間)
-  workflow_dispatch:  # 手動実行も可能にする
+    - cron: '*/15 * * * *'  # 15分ごとに実行
+  workflow_dispatch:
 
 jobs:
   reply-check:
@@ -22,15 +22,11 @@ jobs:
       # 必要なライブラリをインストール
       - name: Install dependencies
         run: |
-          pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
+          pip install google-auth google-api-python-client
 
-      # client_secrets.json ファイルの作成
-      - name: Create client_secrets.json
-        run: echo "${{ secrets.CLIENT_SECRETS_JSON }}" > client_secrets.json
-
-      # client_secrets.json の内容を出力（デバッグ用）
-      - name: Debug client_secrets.json
-        run: cat client_secrets.json
+      # サービスアカウントキーを保存
+      - name: Save service account key
+        run: echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" > service_account.json
 
       # スクリプトを実行
       - name: Run script
