@@ -14,45 +14,45 @@ def authenticate():
     )
     return build("youtube", "v3", credentials=credentials)
 
-def get_comments_and_replies(youtube, video_id):
-    """指定された動画のすべてのコメントと返信コメントを取得"""
-    comments = []
+def get_unreplied_comment(youtube, video_id, username):
+    """返信がない最も新しいコメントを取得"""
     next_page_token = None
+    latest_unreplied_comment = None
 
     while True:
         request = youtube.commentThreads().list(
             part="snippet,replies",
             videoId=video_id,
-            maxResults=100,  # 1回のリクエストで最大100件
-            pageToken=next_page_token  # 次のページのトークンを指定
+            maxResults=100,  # 最大100件を取得
+            pageToken=next_page_token
         )
         response = request.execute()
 
         for item in response.get("items", []):
-            # トップレベルコメントを追加
             top_comment = item["snippet"]["topLevelComment"]["snippet"]
-            comments.append({
-                "comment_id": item["id"],  # コメントのID
-                "text": top_comment["textDisplay"],  # コメント本文
-                "author": top_comment["authorDisplayName"],  # コメント投稿者名
-            })
+            comment_text = top_comment["textDisplay"]
+            comment_id = item["id"]
+            comment_author = top_comment["authorDisplayName"]
 
-            # 返信コメントが存在する場合
-            if "replies" in item:
-                for reply in item["replies"]["comments"]:
-                    reply_snippet = reply["snippet"]
-                    comments.append({
-                        "comment_id": reply["id"],  # 返信コメントのID
-                        "text": reply_snippet["textDisplay"],  # 返信コメント本文
-                        "author": reply_snippet["authorDisplayName"],  # 返信コメント投稿者名
-                    })
+            # 条件: `@MEPI486` を含み、返信が存在しない
+            if username in comment_text:
+                if "replies" not in item or len(item["replies"]["comments"]) == 0:
+                    # 最初の候補、またはより新しいコメントがある場合
+                    if (latest_unreplied_comment is None or
+                        top_comment["publishedAt"] > latest_unreplied_comment["publishedAt"]):
+                        latest_unreplied_comment = {
+                            "comment_id": comment_id,
+                            "text": comment_text,
+                            "author": comment_author,
+                            "publishedAt": top_comment["publishedAt"]
+                        }
 
         # 次のページトークンがある場合、次のリクエストを実行
         next_page_token = response.get("nextPageToken")
         if not next_page_token:
             break
 
-    return comments
+    return latest_unreplied_comment
 
 def post_reply(youtube, comment_id, reply_text):
     """指定されたコメントIDに対して返信を投稿"""
@@ -74,26 +74,17 @@ def post_reply(youtube, comment_id, reply_text):
 def main():
     youtube = authenticate()
     video_id = "p7jBg6oSUJk"  # 対象の動画ID
-    username = "@MEPI486"  # 検出する文字列
+    username = "@MEPI486"  # 条件とする文字列
     reply_text = "効いてて草"  # 返信内容
 
-    # コメントと返信を取得
-    comments = get_comments_and_replies(youtube, video_id)
-    print(f"コメントと返信を合わせて {len(comments)} 件取得しました。")
+    # 返信がない最も新しいコメントを取得
+    comment = get_unreplied_comment(youtube, video_id, username)
 
-    replied = False  # 返信が行われたかどうかを追跡
-
-    # 条件に合うコメントに返信
-    for comment in comments:
-        print(f"チェック中: {comment['text']} by {comment['author']}")
-        if username in comment["text"]:  # 条件に一致する場合
-            print(f"返信対象コメント: {comment['text']} by {comment['author']}")
-            post_reply(youtube, comment["comment_id"], reply_text)
-            replied = True
-
-    # 返信が行われなかった場合のメッセージ
-    if not replied:
-        print("条件に一致するコメントや返信コメントはありませんでした。")
+    if comment:
+        print(f"返信対象コメント: {comment['text']} by {comment['author']}")
+        post_reply(youtube, comment["comment_id"], reply_text)
+    else:
+        print("返信がないコメントは見つかりませんでした。")
 
 if __name__ == "__main__":
     main()
