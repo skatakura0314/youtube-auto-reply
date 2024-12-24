@@ -31,3 +31,7 @@ jobs:
       # client_secrets.json の内容を出力（デバッグ用）
       - name: Debug client_secrets.json
         run: cat client_secrets.json
+
+      # スクリプトを実行
+      - name: Run script
+        run: python youtube_auto_reply.py
