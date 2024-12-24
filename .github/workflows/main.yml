@@ -1,36 +1,30 @@
 name: YouTube Auto Reply
 
 on:
-  workflow_dispatch: # 手動実行トリガー
-  schedule:          # 定期実行トリガー
-    - cron: '0 * * * *' # 毎時0分に実行
+  workflow_dispatch:
 
 jobs:
   youtube-auto-reply:
     runs-on: ubuntu-latest
 
     steps:
-      # リポジトリをチェックアウト
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      # Python環境をセットアップ
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
-      # 必要なPythonパッケージをインストール
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install google-auth google-api-python-client
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install google-auth google-api-python-client
 
-      # サービスアカウントJSONを生成
-      - name: Set up Service Account JSON
-        run: |
-          echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" > service_account.json
+    - name: Set Service Account JSON
+      run: echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" > service_account.json
 
-      # 自動返信スクリプトを実行
-      - name: Run Auto Reply Script
-        run: python youtube_auto_reply.py
+    - name: Run Auto Reply Script
+      env:
+        SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+      run: python youtube_auto_reply.py
