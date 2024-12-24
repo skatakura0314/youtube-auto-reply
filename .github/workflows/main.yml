@@ -1,30 +1,48 @@
 name: YouTube Auto Reply
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   youtube-auto-reply:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install google-auth google-api-python-client
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-auth google-api-python-client
 
-    - name: Set Service Account JSON
-      run: echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" > service_account.json
+      - name: Create Service Account JSON
+        run: |
+          echo "$SERVICE_ACCOUNT_JSON" | sed 's/\\n/\
+/g' > service_account.json
+        env:
+          SERVICE_ACCOUNT_JSON: |
+            {
+              "type": "service_account",
+              "project_id": "youtube-auto-reply-445707",
+              "private_key_id": "b4ba50a96b0e4afc5e7eb703daa97547426bd965",
+              "private_key": "-----BEGIN PRIVATE KEY-----\\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDJhX4THkfB+cle\\nKVsdW7YE3nsCEJ0dzDfGT/xw7MYWCbjosy9bWr5ij/YUP939fhOOUrgVtZKT4u2m\\nSroluOIsaf2UWTAAovxUs2/U/kG4E3mhdM/5Zy+sUzKzpATg3cIMVzb2+6YCG1/d\\nN5L+xh9T+BgWk+MKF/Ua9ZC7z6qTAZLVMh7zq9UzANVqAtIAC+aEdaj3/dPotStQ\\nyoJ+yTrPkrI5XArZro8i0qzthVWUxIvoDf5YbDRX/VeF52q8DTjSZJp/LYqd0Jiz\\n8g/KPzhDExTEg+k8REDhfzuXnt1ClehvpVQtX81D/wsxJ03nLm6nNPuJLkH+Cz1A\\nwRkOS7ttAgMBAAECggEADBp57iuxPfZtgJEgTqeYS5DnN20IWrv4v5mZ562431BP\\nLEloIecAgfVJNNckfe9JZ7tny1n/8eTnxsc8iJEi+G2XPtvfylyqUMCu306JY5pm\\ngZV9UOqVzkD4TcTJ9uLVdEigCFPTQ9N2va0dpYgAZVqEa9q5q1IGtSCkRDtz8GdE\\n9n2PW6H4rR4RGloCBUfDZp7O9ToJR+RBrXEcFCzIMo8ltWL8LD+fScP94UJ8aAvj\\nF1rP0ElS1A94rneJeKgNCuDBA7mdI6fy0iVsHp3bgjRnVkSHQ+AONfZJlKm2f0Fa\\nctct7y9NqxJ6+06swx0FAYNFhj9KdVqAI9S7ocWlywKBgQDwfsaW1U8Ro+cb7P5S\\nkkejSSFZRwZDNAzCb1O+xKmmGGI0ky0tVk/g+22k5PlHw5Cy8v/Oyjx+PP6zBJ4z\\nt3lBqhdQ2yhozAm0QDRWWUVAiWz+peMRMhBjZhwlV5lEFbq1PdYjB4323+LuxuOX\\nhJsHZlUCkPBIk8s1sdz2ZzDbewKBgQDWg3qemS0ETyySO4Ggzpbw7EtweptJbckp\\noRng1a0L8LyCxitLkFNiC4/ZcGZPcvyknlgy4zx2T5G1xs7h9Rj3QnXbS2A5/DKV\\n94ZLeHUQv/lX0YYW6oTlk/t6kDzkTpEC0MDuSWmXXdh9YPQy99SNflxrje2QL2eC\\nCRV9nmd8NwKBgHm3oCjcwszpyGEw3DLMSCeTLqaxtLC0mjSaBaeKf1ZKBwIW7wmA\\nIqN6fS60mJnCl+yJ4gA2CNHXaw0NrEf+dwdN38kTcms/wTWSPSrquYsFQr3LFZYx\\nYWv9VQdtQ2vbF4j9R/CotSgafg9dZ/jaq1/eYe4Pjx0cd/+wCmZHKcobAoGBAJyL\\nuOmTGWIisYFKQfBrs4XAu9Eq+LZek0Z5FhyZcz7agYfiPOhZPDC6BVGGkHN8k9lC\\n4VTJtm8U5F5G5uXJa13Ot5nA6UmHvhbpW60qDCycHMg01OlWXoP4ObcZGgb3OyZV\\n1+ZN1uwrBXmCTtP/PrO/uoyXN/5YSe6A2JkjB5yDAoGBAOO90/L69ibaPonVO3Ln\\nx5ZpQjYVk4EbffCW8XjlZDldr+S0sCxdw9FP3Q2kdsSWEnJc2Va20DMtO0yCghbt\\nd/gPZrcTkXJrJyKqKczjlR4aeHN5hVHVkHobPubOi5rImMkplB/msp497b9iG/3t\\nYDDW7XN0MyyJxsAW06E7uI5d\\n-----END PRIVATE KEY-----\\n",
+              "client_email": "id-322@youtube-auto-reply-445707.iam.gserviceaccount.com",
+              "client_id": "110254581244307995177",
+              "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+              "token_uri": "https://oauth2.googleapis.com/token",
+              "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+              "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/id-322%40youtube-auto-reply-445707.iam.gserviceaccount.com",
+              "universe_domain": "googleapis.com"
+            }
 
-    - name: Run Auto Reply Script
-      env:
-        SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
-      run: python youtube_auto_reply.py
+      - name: Run YouTube Auto Reply Script
+        run: |
+          python youtube_auto_reply.py
