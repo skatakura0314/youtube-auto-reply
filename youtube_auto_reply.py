@@ -1,5 +1,6 @@
 import os
 import logging
+import json
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 
@@ -20,9 +21,9 @@ if not SERVICE_ACCOUNT_FILE:
     exit(1)
 
 try:
-    credentials = Credentials.from_service_account_info(
-        eval(SERVICE_ACCOUNT_FILE), scopes=SCOPES
-    )
+    # 環境変数がJSON文字列の場合
+    service_account_info = json.loads(SERVICE_ACCOUNT_FILE)
+    credentials = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
     youtube = build("youtube", "v3", credentials=credentials)
     logging.info("YouTube API認証に成功しました。")
 except Exception as e:
@@ -32,14 +33,22 @@ except Exception as e:
 def get_comments(video_id):
     """動画のコメントを取得"""
     try:
-        request = youtube.commentThreads().list(
-            part="snippet",
-            videoId=video_id,
-            maxResults=100,
-            order="time"
-        )
-        response = request.execute()
-        return response.get("items", [])
+        comments = []
+        next_page_token = None
+        while True:
+            request = youtube.commentThreads().list(
+                part="snippet",
+                videoId=video_id,
+                maxResults=100,
+                order="time",
+                pageToken=next_page_token
+            )
+            response = request.execute()
+            comments.extend(response.get("items", []))
+            next_page_token = response.get("nextPageToken")
+            if not next_page_token:
+                break
+        return comments
     except Exception as e:
         logging.error("コメント取得に失敗しました: %s", e)
         return []
@@ -56,7 +65,7 @@ def reply_to_comment(comment_id, text):
                 }
             }
         )
-        response = request.execute()
+        request.execute()
         logging.info("コメントに返信しました: %s", comment_id)
     except Exception as e:
         logging.error("コメントの返信に失敗しました: %s", e)
