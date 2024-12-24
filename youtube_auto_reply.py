@@ -1,75 +1,67 @@
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 import os
-import pickle
+import json
 
-# スコープ設定（YouTubeの操作に必要）
 SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
 
 def authenticate():
-    """OAuth 2.0 認証を行い、認証済みの YouTube API サービスを返す"""
-    creds = None
-    if os.path.exists("token.pickle"):
-        with open("token.pickle", "rb") as token:
-            creds = pickle.load(token)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'client_secrets.json', SCOPES
-            )
-            # 手動認証を促す
-            auth_url, _ = flow.authorization_url(prompt='consent')
-            print(f"Please visit this URL to authorize this application: {auth_url}")
-            code = input("Enter the authorization code: ")
-            creds = flow.fetch_token(code=code)
-        with open("token.pickle", "wb") as token:
-            pickle.dump(creds, token)
-    return build("youtube", "v3", credentials=creds)
+    """サービスアカウントを使用して認証を行い、YouTube API クライアントを返す"""
+    with open('service_account.json', 'r') as f:
+        service_account_info = json.load(f)
+    credentials = service_account.Credentials.from_service_account_info(
+        service_account_info, scopes=SCOPES
+    )
+    return build("youtube", "v3", credentials=credentials)
 
-def post_reply(youtube, comment_id, reply_text):
-    """指定されたコメントIDに対して返信を投稿"""
-    try:
-        request = youtube.comments().insert(
-            part="snippet",
-            body={
-                "snippet": {
-                    "parentId": comment_id,  # 返信先のコメントID
-                    "textOriginal": reply_text  # 投稿する返信内容
-                }
-            }
-        )
-        response = request.execute()
-        print(f"Replied to comment: {response['snippet']['textDisplay']}")
-    except Exception as e:
-        print(f"An error occurred while posting the reply: {e}")
-
-def main():
-    youtube = authenticate()
-    
-    # 動画IDとリプライ内容
-    video_id = "p7jBg6oSUJk"
-    username = "@MEPI486"
-    reply_text = "効いてて草"
-
-    # コメントスレッドを取得してリプライを検索
+def get_comments(youtube, video_id):
+    """指定された動画のコメントを取得"""
+    comments = []
     request = youtube.commentThreads().list(
-        part="snippet,replies",
+        part="snippet",
         videoId=video_id,
-        maxResults=100
+        maxResults=100  # 最大100件のコメントを取得
     )
     response = request.execute()
 
     for item in response.get("items", []):
-        if "replies" in item:
-            for reply in item["replies"]["comments"]:
-                reply_text_display = reply["snippet"]["textDisplay"]
-                comment_id = reply["id"]
-                if username in reply_text_display:
-                    print(f"Reply mentioning {username} found: {reply_text_display}")
-                    post_reply(youtube, comment_id, reply_text)
+        comment = item["snippet"]["topLevelComment"]["snippet"]
+        comments.append({
+            "comment_id": item["id"],  # コメントのID
+            "text": comment["textDisplay"],  # コメント本文
+            "author": comment["authorDisplayName"]  # コメント投稿者名
+        })
+    return comments
+
+def post_reply(youtube, comment_id, reply_text):
+    """指定されたコメントIDに対して返信を投稿"""
+    request = youtube.comments().insert(
+        part="snippet",
+        body={
+            "snippet": {
+                "parentId": comment_id,
+                "textOriginal": reply_text
+            }
+        }
+    )
+    response = request.execute()
+    print(f"Replied to comment {comment_id}: {reply_text}")
+
+def main():
+    youtube = authenticate()
+    video_id = "p7jBg6oSUJk"  # 対象の動画ID
+    username = "@MEPI486"  # 検出する文字列
+    reply_text = "効いてて草"  # 返信内容
+
+    # コメントを取得
+    comments = get_comments(youtube, video_id)
+    print(f"Retrieved {len(comments)} comments.")
+
+    # 条件に合うコメントに返信
+    for comment in comments:
+        if username in comment["text"]:  # username がコメントに含まれる場合のみ
+            print(f"Replying to: {comment['text']} by {comment['author']}")
+            post_reply(youtube, comment["comment_id"], reply_text)
 
 if __name__ == "__main__":
     main()
