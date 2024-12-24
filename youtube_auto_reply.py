@@ -45,17 +45,20 @@ def get_comments(youtube, video_id):
 
 def post_reply(youtube, comment_id, reply_text):
     """指定されたコメントIDに対して返信を投稿"""
-    request = youtube.comments().insert(
-        part="snippet",
-        body={
-            "snippet": {
-                "parentId": comment_id,
-                "textOriginal": reply_text
+    try:
+        request = youtube.comments().insert(
+            part="snippet",
+            body={
+                "snippet": {
+                    "parentId": comment_id,
+                    "textOriginal": reply_text
+                }
             }
-        }
-    )
-    response = request.execute()
-    print(f"Replied to comment {comment_id}: {reply_text}")
+        )
+        response = request.execute()
+        print(f"返信しました: {reply_text} (対象コメントID: {comment_id})")
+    except Exception as e:
+        print(f"コメントへの返信中にエラーが発生しました (コメントID: {comment_id}): {e}")
 
 def main():
     youtube = authenticate()
@@ -65,13 +68,21 @@ def main():
 
     # コメントを取得
     comments = get_comments(youtube, video_id)
-    print(f"Retrieved {len(comments)} comments.")
+    print(f"コメントを {len(comments)} 件取得しました。")
+
+    replied = False  # 返信が行われたかどうかを追跡
 
     # 条件に合うコメントに返信
     for comment in comments:
-        if username in comment["text"]:  # username がコメントに含まれる場合のみ
-            print(f"Replying to: {comment['text']} by {comment['author']}")
+        print(f"チェック中: {comment['text']} by {comment['author']}")
+        if username in comment["text"]:  # 条件に一致する場合
+            print(f"返信対象コメント: {comment['text']} by {comment['author']}")
             post_reply(youtube, comment["comment_id"], reply_text)
+            replied = True
+
+    # 返信が行われなかった場合のメッセージ
+    if not replied:
+        print("条件に一致するコメントはありませんでした。")
 
 if __name__ == "__main__":
     main()
