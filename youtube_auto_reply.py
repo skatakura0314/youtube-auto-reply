@@ -15,15 +15,15 @@ reply_text = "効いてて草"
 SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_JSON")
 SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
 
+# サービスアカウントJSONの確認
 if not SERVICE_ACCOUNT_FILE:
     logging.error("サービスアカウントJSONが見つかりません。")
     exit(1)
+else:
+    # デバッグログでJSONの内容を確認 (一部を出力)
+    logging.debug("SERVICE_ACCOUNT_JSON (一部): %s", SERVICE_ACCOUNT_FILE[:100])
 
 try:
-    # サービスアカウントJSONの内容をログに出力（重要情報はマスクする）
-    logging.info("サービスアカウントJSONの内容: %s", SERVICE_ACCOUNT_FILE[:100] + "..." if SERVICE_ACCOUNT_FILE else "None")
-
-    # JSONをパースして認証
     credentials = Credentials.from_service_account_info(
         eval(SERVICE_ACCOUNT_FILE), scopes=SCOPES
     )
