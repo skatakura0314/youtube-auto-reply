@@ -20,8 +20,8 @@ if not SERVICE_ACCOUNT_FILE:
     logging.error("サービスアカウントJSONが見つかりません。")
     exit(1)
 else:
-    # デバッグログでJSONの内容を確認 (一部を出力)
-    logging.debug("SERVICE_ACCOUNT_JSON (一部): %s", SERVICE_ACCOUNT_FILE[:100])
+    # JSONの内容を安全に確認 (最初の100文字を表示)
+    logging.info("SERVICE_ACCOUNT_JSONが設定されました: %s", SERVICE_ACCOUNT_FILE[:100])
 
 try:
     credentials = Credentials.from_service_account_info(
