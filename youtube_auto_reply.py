@@ -15,22 +15,32 @@ def authenticate():
     return build("youtube", "v3", credentials=credentials)
 
 def get_comments(youtube, video_id):
-    """指定された動画のコメントを取得"""
+    """指定された動画のすべてのコメントを取得"""
     comments = []
-    request = youtube.commentThreads().list(
-        part="snippet",
-        videoId=video_id,
-        maxResults=100  # 最大100件のコメントを取得
-    )
-    response = request.execute()
+    next_page_token = None
 
-    for item in response.get("items", []):
-        comment = item["snippet"]["topLevelComment"]["snippet"]
-        comments.append({
-            "comment_id": item["id"],  # コメントのID
-            "text": comment["textDisplay"],  # コメント本文
-            "author": comment["authorDisplayName"]  # コメント投稿者名
-        })
+    while True:
+        request = youtube.commentThreads().list(
+            part="snippet",
+            videoId=video_id,
+            maxResults=100,  # 1回のリクエストで最大100件
+            pageToken=next_page_token  # 次のページのトークンを指定
+        )
+        response = request.execute()
+
+        for item in response.get("items", []):
+            comment = item["snippet"]["topLevelComment"]["snippet"]
+            comments.append({
+                "comment_id": item["id"],  # コメントのID
+                "text": comment["textDisplay"],  # コメント本文
+                "author": comment["authorDisplayName"]  # コメント投稿者名
+            })
+
+        # 次のページトークンがある場合、次のリクエストを実行
+        next_page_token = response.get("nextPageToken")
+        if not next_page_token:
+            break
+
     return comments
 
 def post_reply(youtube, comment_id, reply_text):
