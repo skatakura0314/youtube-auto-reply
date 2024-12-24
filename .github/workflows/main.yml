@@ -25,8 +25,7 @@ jobs:
 
       - name: Create Service Account JSON
         run: |
-          echo "$SERVICE_ACCOUNT_JSON" | sed 's/\\n/\
-/g' > service_account.json
+          echo "$SERVICE_ACCOUNT_JSON" | sed 's/\\n/\n/g' > service_account.json
         env:
           SERVICE_ACCOUNT_JSON: |
             {
