@@ -1,4 +1,4 @@
-name: YouTube Auto Reply
+name: YouTube Auto Reply with OAuth
 
 on:
   schedule:
@@ -9,18 +9,25 @@ jobs:
   reply-check:
     runs-on: ubuntu-latest
     steps:
+      # リポジトリのコードをチェックアウト
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Python環境のセットアップ
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.x
 
+      # 必要なライブラリをインストール
       - name: Install dependencies
-        run: pip install google-api-python-client
+        run: |
+          pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 
+      # client_secrets.json ファイルの作成
+      - name: Create client_secrets.json
+        run: echo "${{ secrets.CLIENT_SECRETS_JSON }}" > client_secrets.json
+
+      # スクリプトを実行
       - name: Run script
         run: python youtube_auto_reply.py
-        env:
-          API_KEY: ${{ secrets.API_KEY }}
