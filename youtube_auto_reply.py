@@ -8,22 +8,20 @@ import pickle
 SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
 
 def authenticate():
-    """OAuth 2.0認証を行い、認証済みサービスを返す"""
+    """OAuth 2.0 認証を行い、認証済みの YouTube API サービスを返す"""
     creds = None
-    # トークンファイルが存在する場合、再利用
     if os.path.exists("token.pickle"):
         with open("token.pickle", "rb") as token:
             creds = pickle.load(token)
-    # トークンが存在しない場合、新たに認証を実行
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                "client_secrets.json", SCOPES  # ここでOAuthクライアント情報を指定
+                'client_secrets.json', SCOPES
             )
-            creds = flow.run_local_server(port=0)
-        # トークンを保存
+            # ヘッドレス環境では console を使う
+            creds = flow.run_console()  # run_local_server の代わりに run_console を使用
         with open("token.pickle", "wb") as token:
             pickle.dump(creds, token)
     return build("youtube", "v3", credentials=creds)
