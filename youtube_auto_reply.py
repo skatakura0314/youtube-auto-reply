@@ -1,86 +1,111 @@
 import os
 import logging
-from googleapiclient.discovery import build
+import json
 from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
 
-# ログ設定
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# ログの設定
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# 動画ID、特定のユーザー名、返信内容
-video_id = "p7jBg6oSUJk"
-username = "@MEPI486"
-reply_text = "効いてて草"
+# 動画IDと条件
+VIDEO_ID = "p7jBg6oSUJk"
+USERNAME = "@MEPI486"
+REPLY_TEXT = "効いてて草"
 
-# 環境変数や設定を利用
-SERVICE_ACCOUNT_FILE = os.getenv("SERVICE_ACCOUNT_JSON")
-SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
+# 環境変数からサービスアカウントJSONをロード
+SERVICE_ACCOUNT_FILE = "service_account.json"
 
-# サービスアカウントJSONの確認
-if not SERVICE_ACCOUNT_FILE:
-    logging.error("サービスアカウントJSONが見つかりません。")
-    exit(1)
-else:
-    # JSONの内容を安全に確認 (最初の100文字を表示)
-    logging.info("SERVICE_ACCOUNT_JSONが設定されました: %s", SERVICE_ACCOUNT_FILE[:100])
-
-try:
-    credentials = Credentials.from_service_account_info(
-        eval(SERVICE_ACCOUNT_FILE), scopes=SCOPES
-    )
-    youtube = build("youtube", "v3", credentials=credentials)
-    logging.info("YouTube API認証に成功しました。")
-except Exception as e:
-    logging.error("YouTube API認証に失敗しました: %s", e)
-    exit(1)
-
-def get_comments(video_id):
-    """動画のコメントを取得"""
+def authenticate_youtube_api():
+    """
+    Googleサービスアカウントを使用してYouTube APIに認証します。
+    """
     try:
-        request = youtube.commentThreads().list(
-            part="snippet",
-            videoId=video_id,
-            maxResults=100,
-            order="time"
+        credentials = Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE,
+            scopes=["https://www.googleapis.com/auth/youtube.force-ssl"]
         )
-        response = request.execute()
-        return response.get("items", [])
+        youtube = build("youtube", "v3", credentials=credentials)
+        logging.info("YouTube API 認証に成功しました。")
+        return youtube
     except Exception as e:
-        logging.error("コメント取得に失敗しました: %s", e)
-        return []
+        logging.error("YouTube API 認証に失敗しました: %s", str(e))
+        raise
 
-def reply_to_comment(comment_id, text):
-    """コメントに返信"""
+def get_all_comments(youtube, video_id):
+    """
+    指定した動画の全コメントを取得します。
+    """
+    comments = []
     try:
-        request = youtube.comments().insert(
+        next_page_token = None
+        while True:
+            comments_request = youtube.commentThreads().list(
+                part="snippet",
+                videoId=video_id,
+                maxResults=100,
+                pageToken=next_page_token
+            )
+            comments_response = comments_request.execute()
+            comments.extend(comments_response.get("items", []))
+            next_page_token = comments_response.get("nextPageToken")
+            if not next_page_token:
+                break
+        logging.info("全コメントを取得しました。合計: %d 件", len(comments))
+    except Exception as e:
+        logging.error("コメントの取得に失敗しました: %s", str(e))
+    return comments
+
+def filter_comments(comments, username):
+    """
+    特定のユーザー名を含むコメントで、返信がない最新のものを取得します。
+    """
+    target_comment = None
+    for comment in comments:
+        try:
+            snippet = comment["snippet"]["topLevelComment"]["snippet"]
+            text = snippet["textOriginal"]
+            reply_count = comment["snippet"].get("totalReplyCount", 0)
+            if username in text and reply_count == 0:
+                # 最新のものを選ぶため、既存のものより更新日時が新しい場合に上書き
+                if not target_comment or snippet["updatedAt"] > target_comment["updatedAt"]:
+                    target_comment = snippet
+        except KeyError as e:
+            logging.warning("コメントのデータが不完全です: %s", str(e))
+    return target_comment
+
+def reply_to_comment(youtube, comment_id):
+    """
+    指定されたコメントに返信を投稿します。
+    """
+    try:
+        youtube.comments().insert(
             part="snippet",
             body={
                 "snippet": {
                     "parentId": comment_id,
-                    "textOriginal": text
+                    "textOriginal": REPLY_TEXT
                 }
             }
-        )
-        response = request.execute()
-        logging.info("コメントに返信しました: %s", comment_id)
+        ).execute()
+        logging.info(f"コメントID {comment_id} に返信しました。")
     except Exception as e:
-        logging.error("コメントの返信に失敗しました: %s", e)
+        logging.error(f"コメントID {comment_id} に返信できませんでした: %s", str(e))
 
 def main():
-    logging.info("動画ID: %s に対してコメントを処理します。", video_id)
-    comments = get_comments(video_id)
+    """
+    メインの処理。
+    """
+    youtube = authenticate_youtube_api()
+    comments = get_all_comments(youtube, VIDEO_ID)
     if not comments:
-        logging.info("返信するコメントがありません。")
+        logging.warning("動画にコメントが見つかりませんでした。")
         return
-
-    for comment in comments:
-        comment_id = comment["snippet"]["topLevelComment"]["id"]
-        text = comment["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
-        
-        # 特定のユーザー名が含まれるコメントに返信
-        if username in text:
-            logging.info("対象コメントを発見しました: %s", text)
-            reply_to_comment(comment_id, reply_text)
+    target_comment = filter_comments(comments, USERNAME)
+    if target_comment:
+        logging.info("返信対象のコメントが見つかりました。")
+        reply_to_comment(youtube, target_comment["id"])
+    else:
+        logging.info("返信対象のコメントはありません。")
 
 if __name__ == "__main__":
-    logging.info("スクリプトを開始しました。")
     main()
