@@ -9,25 +9,20 @@ jobs:
   reply-check:
     runs-on: ubuntu-latest
     steps:
-      # リポジトリのコードをチェックアウト
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Python環境のセットアップ
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.x
 
-      # 必要なライブラリをインストール
       - name: Install dependencies
         run: |
           pip install google-auth google-api-python-client
 
-      # サービスアカウントキーを保存
       - name: Save service account key
         run: echo "${{ secrets.SERVICE_ACCOUNT_JSON }}" > service_account.json
 
-      # スクリプトを実行
       - name: Run script
         run: python youtube_auto_reply.py
