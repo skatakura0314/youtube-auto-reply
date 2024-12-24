@@ -30,7 +30,7 @@ def main():
     youtube = build('youtube', 'v3', developerKey=API_KEY)
 
     # 手動で指定する動画IDと自分のコメント内容
-    video_id = "p7jBg6oSUJk&lc=UgzMA_HLy72gOSMYUmZ4AaABAg.ACO1p2lvys1ACPr7woLdDG"  # 対象の動画IDを指定
+    video_id = "p7jBg6oSUJk"  # 対象の動画IDを指定
     my_comment_text = "効いてて草"  # 自分のコメント内容を正確に指定
 
     # 返信を取得
