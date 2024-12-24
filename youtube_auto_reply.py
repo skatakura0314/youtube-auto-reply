@@ -20,8 +20,11 @@ def authenticate():
             flow = InstalledAppFlow.from_client_secrets_file(
                 'client_secrets.json', SCOPES
             )
-            # ヘッドレス環境では console を使う
-            creds = flow.run_console()  # run_local_server の代わりに run_console を使用
+            # 手動認証を促す
+            auth_url, _ = flow.authorization_url(prompt='consent')
+            print(f"Please visit this URL to authorize this application: {auth_url}")
+            code = input("Enter the authorization code: ")
+            creds = flow.fetch_token(code=code)
         with open("token.pickle", "wb") as token:
             pickle.dump(creds, token)
     return build("youtube", "v3", credentials=creds)
